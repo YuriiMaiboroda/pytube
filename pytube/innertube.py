@@ -5,7 +5,7 @@ interfaces returns raw results. These should instead be parsed to extract
 the useful information for the end user.
 """
 # Native python imports
-import json
+import json, logging
 import os
 import pathlib
 import time
@@ -13,6 +13,8 @@ from urllib import parse
 
 # Local imports
 from pytube import request
+
+logger = logging.getLogger(__name__)
 
 # YouTube on TV client secrets
 _client_id = '861556708454-d6dlm3lh05idd8npek18k6be8ba3oc68.apps.googleusercontent.com'
