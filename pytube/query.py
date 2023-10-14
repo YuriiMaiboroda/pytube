@@ -247,7 +247,7 @@ class StreamQuery(Sequence):
         """
         return self.itag_index.get(int(itag))
 
-    def get_by_resolution(self, resolution: str) -> Optional[Stream]:
+    def get_by_resolution(self, resolution: str, progressive=True) -> Optional[Stream]:
         """Get the corresponding :class:`Stream <Stream>` for a given resolution.
 
         Stream must be a progressive mp4.
@@ -261,10 +261,10 @@ class StreamQuery(Sequence):
 
         """
         return self.filter(
-            progressive=True, subtype="mp4", resolution=resolution
+            progressive, subtype="mp4", resolution=resolution
         ).first()
 
-    def get_lowest_resolution(self) -> Optional[Stream]:
+    def get_lowest_resolution(self, progressive=True) -> Optional[Stream]:
         """Get lowest resolution stream that is a progressive mp4.
 
         :rtype: :class:`Stream <Stream>` or None
@@ -274,7 +274,7 @@ class StreamQuery(Sequence):
 
         """
         return (
-            self.filter(progressive=True, subtype="mp4")
+            self.filter(progressive, subtype="mp4")
             .order_by("resolution")
             .first()
         )
