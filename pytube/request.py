@@ -6,8 +6,7 @@ import re
 import socket
 from functools import lru_cache
 from urllib import parse
-from urllib.error import URLError
-from urllib.request import Request, urlopen
+import requests
 
 from pytube.exceptions import RegexMatchError, MaxRetriesExceeded
 from pytube.helpers import regex_search
@@ -15,12 +14,14 @@ from pytube.helpers import regex_search
 logger = logging.getLogger(__name__)
 default_range_size = 9437184  # 9MB
 
+proxies = None
 
 def _execute_request(
-    url,
-    method=None,
-    headers=None,
-    data=None,
+    url: str,
+    method: str = None,
+    headers: dict[str, str] = None,
+    data = None,
+    stream = False,
     timeout=socket._GLOBAL_DEFAULT_TIMEOUT
 ):
     base_headers = {"User-Agent": "Mozilla/5.0", "accept-language": "en-US,en"}
@@ -31,10 +32,9 @@ def _execute_request(
         if not isinstance(data, bytes):
             data = bytes(json.dumps(data), encoding="utf-8")
     if url.lower().startswith("http"):
-        request = Request(url, headers=base_headers, method=method, data=data)
+        return requests.request(method, url, headers=base_headers, data=data, timeout=timeout, proxies=proxies, stream=stream)
     else:
         raise ValueError("Invalid URL")
-    return urlopen(request, timeout=timeout)  # nosec
 
 
 def get(url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
@@ -50,8 +50,9 @@ def get(url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
     """
     if extra_headers is None:
         extra_headers = {}
-    response = _execute_request(url, headers=extra_headers, timeout=timeout)
-    return response.read().decode("utf-8")
+    response = _execute_request(url, method="GET", headers=extra_headers, timeout=timeout)
+    response.encoding = "utf-8"
+    return response.text
 
 
 def post(url, extra_headers=None, data=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
@@ -78,11 +79,13 @@ def post(url, extra_headers=None, data=None, timeout=socket._GLOBAL_DEFAULT_TIME
     extra_headers.update({"Content-Type": "application/json"})
     response = _execute_request(
         url,
+        method="POST",
         headers=extra_headers,
         data=data,
         timeout=timeout
     )
-    return response.read().decode("utf-8")
+    response.encoding = "utf-8"
+    return response.text
 
 
 def seq_stream(
@@ -157,15 +160,13 @@ def stream(
                 response = _execute_request(
                     url + f"&range={downloaded}-{stop_pos}",
                     method="GET",
+                    stream=True,
                     timeout=timeout
                 )
-            except URLError as e:
+            except requests.Timeout as e:
                 # We only want to skip over timeout errors, and
-                # raise any other URLError exceptions
-                if isinstance(e.reason, socket.timeout):
-                    pass
-                else:
-                    raise
+                # raise any other RequestException exceptions
+                pass
             except http.client.IncompleteRead:
                 # Allow retries on IncompleteRead errors for unreliable connections
                 pass
@@ -179,18 +180,17 @@ def stream(
                 resp = _execute_request(
                     url + f"&range={0}-{99999999999}",
                     method="GET",
+                    stream=True,
                     timeout=timeout
                 )
-                content_range = resp.info()["Content-Length"]
+                content_range = resp.headers["Content-Length"]
                 file_size = int(content_range)
             except (KeyError, IndexError, ValueError) as e:
                 logger.error(e)
-        while True:
-            chunk = response.read()
-            if not chunk:
-                break
-            downloaded += len(chunk)
-            yield chunk
+        for chunk in response.iter_content(chunk_size=None):
+            if chunk:
+                downloaded += len(chunk)
+                yield chunk
     return  # pylint: disable=R1711
 
 
@@ -225,7 +225,7 @@ def seq_filesize(url):
         url, method="GET"
     )
 
-    response_value = response.read()
+    response_value = response.content
     # The file header must be added to the total filesize
     total_filesize += len(response_value)
 
@@ -265,5 +265,5 @@ def head(url):
     :returns:
         dictionary of lowercase headers
     """
-    response_headers = _execute_request(url, method="HEAD").info()
+    response_headers = _execute_request(url, method="HEAD").headers
     return {k.lower(): v for k, v in response_headers.items()}
