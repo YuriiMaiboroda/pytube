@@ -12,7 +12,7 @@ from pytube.exceptions import RegexMatchError, MaxRetriesExceeded
 from pytube.helpers import regex_search
 
 logger = logging.getLogger(__name__)
-default_range_size = 9437184  # 9MB
+default_range_size = 2147483648  # 2GB
 
 proxies = None
 
@@ -142,11 +142,12 @@ def stream(
     :param str url: The URL to perform the GET request for.
     :rtype: Iterable[bytes]
     """
-    file_size: int = default_range_size  # fake filesize to start
+    file_size: int = filesize(url) # default_range_size  # fake filesize to start
     downloaded = 0
     while downloaded < file_size:
         stop_pos = min(downloaded + default_range_size, file_size) - 1
         range_header = f"bytes={downloaded}-{stop_pos}"
+        headers = { "Range" : range_header }
         tries = 0
 
         # Attempt to make the request multiple times as necessary.
@@ -161,6 +162,7 @@ def stream(
                     url + f"&range={downloaded}-{stop_pos}",
                     method="GET",
                     stream=True,
+                    headers=headers,
                     timeout=timeout
                 )
             except requests.Timeout as e:
@@ -175,18 +177,6 @@ def stream(
                 break
             tries += 1
 
-        if file_size == default_range_size:
-            try:
-                resp = _execute_request(
-                    url + f"&range={0}-{99999999999}",
-                    method="GET",
-                    stream=True,
-                    timeout=timeout
-                )
-                content_range = resp.headers["Content-Length"]
-                file_size = int(content_range)
-            except (KeyError, IndexError, ValueError) as e:
-                logger.error(e)
         for chunk in response.iter_content(chunk_size=None):
             if chunk:
                 downloaded += len(chunk)
