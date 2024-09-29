@@ -17,6 +17,9 @@ import re
 from itertools import chain
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import sys
+import inspect
+
 from pytube.exceptions import ExtractError, RegexMatchError
 from pytube.helpers import cache, regex_search
 from pytube.parser import find_object_from_startpoint, throttling_array_split
@@ -263,6 +266,7 @@ def get_throttling_function_name(js: str) -> str:
         # a.C && (b = a.get("n")) && (b = Bpa[0](b), a.set("n", b),
         # Bpa.length || iha("")) }};
         # In the above case, `iha` is the relevant function name
+        r'(?:.get("n"))&&(b=|b=String.fromCharCode(\d+),c=a.get(b))&&(c=)([a-zA-Z0-9$]+)(?:[(\d+)])?([a-zA-Z0-9])',
         r'a\.[a-zA-Z]\s*&&\s*\([a-z]\s*=\s*a\.get\("n"\)\)\s*&&.*\|\|\s*([a-z]+)',
         r'\([a-z]\s*=\s*([a-zA-Z0-9$]+)(\[\d+\])\([a-z]\)',
     ]

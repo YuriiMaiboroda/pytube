@@ -177,6 +177,18 @@ def stream(
                 break
             tries += 1
 
+        #if file_size == default_range_size:
+        #    try:
+        #        #resp = _execute_request(
+        #        #    url + f"&range=0-99999999999",
+        #        #    method="GET",
+        #        #    stream=True,
+        #        #    timeout=timeout
+        #        #)
+        #        content_range = response.headers["Content-Length"]
+        #        file_size = int(content_range)
+        #    except (KeyError, IndexError, ValueError) as e:
+        #        logger.error(e)
         for chunk in response.iter_content(chunk_size=None):
             if chunk:
                 downloaded += len(chunk)

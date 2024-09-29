@@ -11,6 +11,9 @@ import pathlib
 import time
 from urllib import parse
 
+import sys
+import inspect
+
 # Local imports
 from pytube import request
 
@@ -47,7 +50,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'ANDROID',
-                'clientVersion': '17.31.35',
+                'clientVersion': '19.08.35',
                 'androidSdkVersion': 30
             }
         },
@@ -60,7 +63,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'IOS',
-                'clientVersion': '17.33.2',
+                'clientVersion': '19.08.35',
                 'deviceModel': 'iPhone14,3'
             }
         },
@@ -87,7 +90,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'ANDROID_EMBEDDED_PLAYER',
-                'clientVersion': '17.31.35',
+                'clientVersion': '19.08.35',
                 'clientScreen': 'EMBED',
                 'androidSdkVersion': 30,
             }
@@ -101,7 +104,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'IOS_MESSAGES_EXTENSION',
-                'clientVersion': '17.33.2',
+                'clientVersion': '19.08.35',
                 'deviceModel': 'iPhone14,3'
             }
         },
@@ -127,7 +130,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'ANDROID_MUSIC',
-                'clientVersion': '5.16.51',
+                'clientVersion': '6.41',
                 'androidSdkVersion': 30
             }
         },
@@ -140,7 +143,7 @@ _default_clients = {
         'context': {
             'client': {
                 'clientName': 'IOS_MUSIC',
-                'clientVersion': '5.21',
+                'clientVersion': '6.41',
                 'deviceModel': 'iPhone14,3'
             }
         },
@@ -222,7 +225,7 @@ _token_file = os.path.join(_cache_dir, 'tokens.json')
 
 class InnerTube:
     """Object for interacting with the innertube API."""
-    def __init__(self, client='ANDROID_EMBED', use_oauth=False, allow_cache=True):
+    def __init__(self, client='ANDROID', use_oauth=False, allow_cache=True):
         """Initialize an InnerTube object.
 
         :param str client:
@@ -300,6 +303,8 @@ class InnerTube:
         )
         response_data = response.json()
 
+        # logger.debug('refresh_bearer_token: %s' % response_data)
+
         self.access_token = response_data['access_token']
         self.expires = start_time + response_data['expires_in']
         self.cache_tokens()
@@ -321,6 +326,9 @@ class InnerTube:
             data=data
         )
         response_data = response.json()
+
+        # logger.debug(f'{sys._getframe().f_code.co_name}: { response_data}')
+
         verification_url = response_data['verification_url']
         user_code = response_data['user_code']
         print(f'Please open {verification_url} and input code {user_code}')
@@ -389,13 +397,22 @@ class InnerTube:
 
         headers.update(self.header)
 
+        #logger.debug(f'{endpoint_url=}\n{headers=}\n{data=}')
+
         response = request._execute_request(
             endpoint_url,
             'POST',
             headers=headers,
             data=data
         )
-        return response.json()
+        response_data =  response.json()
+
+        #logger.debug(
+        #    f'{sys._getframe().f_code.co_name}: {sys._getframe().f_code.co_name}: {response_data}',
+        #    stack_info=True
+        #)
+
+        return response_data
 
     def browse(self):
         """Make a request to the browse endpoint.
